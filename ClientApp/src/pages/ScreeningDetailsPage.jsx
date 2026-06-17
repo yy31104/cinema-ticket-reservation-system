@@ -21,6 +21,7 @@ export default function ScreeningDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSeatMapLoading, setIsSeatMapLoading] = useState(false);
   const [pendingSeatKey, setPendingSeatKey] = useState('');
+  const [selectedSeat, setSelectedSeat] = useState(null);
 
   const loadSeatMap = useCallback(async () => {
     if (!isAuthenticated) {
@@ -77,6 +78,38 @@ export default function ScreeningDetailsPage() {
     }
   }, [isAuthLoading, loadSeatMap]);
 
+  useEffect(() => {
+    if (!selectedSeat || !seatMap) {
+      return;
+    }
+
+    const currentSeat = seatMap.seatRows
+      .flatMap((row) => row.seats)
+      .find((seat) => seat.rowNumber === selectedSeat.rowNumber && seat.seatNumber === selectedSeat.seatNumber);
+
+    if (!currentSeat || currentSeat.status !== 'free') {
+      setSelectedSeat(null);
+    }
+  }, [seatMap, selectedSeat]);
+
+  function handleSelectSeat(seat) {
+    setError('');
+    setStatus('');
+    setSelectedSeat(seat);
+  }
+
+  function handleClearSelection() {
+    setSelectedSeat(null);
+  }
+
+  function handleConfirmReservation() {
+    if (!selectedSeat) {
+      return;
+    }
+
+    handleReserve(selectedSeat);
+  }
+
   async function handleReserve(seat) {
     const key = `${seat.rowNumber}-${seat.seatNumber}`;
     setPendingSeatKey(key);
@@ -89,10 +122,12 @@ export default function ScreeningDetailsPage() {
         seatNumber: seat.seatNumber
       });
       setStatus(`Seat row ${seat.rowNumber}, seat ${seat.seatNumber} reserved.`);
+      setSelectedSeat(null);
       await loadSeatMap();
     } catch (requestError) {
       if (requestError instanceof ApiError && requestError.status === 409) {
         setError('This seat was already reserved by another user.');
+        setSelectedSeat(null);
         await loadSeatMap();
       } else {
         setError(requestError instanceof ApiError ? requestError.message : 'Unable to reserve seat.');
@@ -185,9 +220,12 @@ export default function ScreeningDetailsPage() {
         </div>
       ) : seatMap ? (
         <SeatMap
+          onClearSelection={handleClearSelection}
           onCancel={handleCancel}
-          onReserve={handleReserve}
+          onConfirmReservation={handleConfirmReservation}
+          onSelectSeat={handleSelectSeat}
           pendingSeatKey={pendingSeatKey}
+          selectedSeat={selectedSeat}
           seatMap={seatMap}
         />
       ) : null}

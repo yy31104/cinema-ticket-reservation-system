@@ -1,7 +1,8 @@
 const legendItems = [
   { className: 'seat-free', label: 'Available' },
+  { className: 'seat-selected', label: 'Selected' },
   { className: 'seat-mine', label: 'Your reservation' },
-  { className: 'seat-taken', label: 'Reserved' }
+  { className: 'seat-taken', label: 'Taken' }
 ];
 
 export default function SeatLegend() {
