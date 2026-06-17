@@ -11,7 +11,7 @@ export default function NavigationBar() {
   }
 
   return (
-    <nav className="navbar navbar-expand-lg bg-white border-bottom">
+    <nav className="navbar navbar-expand-lg cinema-navbar">
       <div className="container">
         <Link className="navbar-brand fw-semibold" to="/screenings">
           Cinema Tickets

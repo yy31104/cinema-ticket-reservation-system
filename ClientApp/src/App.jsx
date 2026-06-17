@@ -12,9 +12,9 @@ import ScreeningsPage from './pages/ScreeningsPage.jsx';
 
 export default function App() {
   return (
-    <>
+    <div className="app-frame">
       <NavigationBar />
-      <main className="container py-4">
+      <main className="app-main container">
         <Routes>
           <Route path="/" element={<Navigate to="/screenings" replace />} />
           <Route path="/login" element={<LoginPage />} />
@@ -56,6 +56,9 @@ export default function App() {
           <Route path="*" element={<Navigate to="/screenings" replace />} />
         </Routes>
       </main>
-    </>
+      <footer className="app-footer">
+        <div className="container">Cinema Ticket Reservation System</div>
+      </footer>
+    </div>
   );
 }
