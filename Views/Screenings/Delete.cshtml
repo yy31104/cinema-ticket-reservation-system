@@ -1,0 +1,24 @@
+@model Screening
+@{
+    ViewData["Title"] = "Delete Screening";
+}
+
+<h1 class="mb-3">Delete Screening</h1>
+<p class="text-danger">Are you sure you want to delete this screening? This action cannot be undone.</p>
+
+<dl class="row">
+    <dt class="col-sm-3">Film title</dt>
+    <dd class="col-sm-9">@Model.FilmTitle</dd>
+
+    <dt class="col-sm-3">Start time</dt>
+    <dd class="col-sm-9">@Model.StartTime.ToString("yyyy-MM-dd HH:mm")</dd>
+
+    <dt class="col-sm-3">Cinema</dt>
+    <dd class="col-sm-9">@Model.Cinema.Name</dd>
+</dl>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-action="Index" class="btn btn-secondary">Back to screenings</a>
+</form>

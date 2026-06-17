@@ -1,0 +1,62 @@
+@model IEnumerable<Screening>
+@{
+    ViewData["Title"] = "Screenings";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Screenings</h1>
+    @if (User.IsInRole("Admin"))
+    {
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary">Admin only</span>
+            <a class="btn btn-primary" asp-action="Create">Create screening</a>
+        </div>
+    }
+</div>
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="alert">@statusMessage</div>
+}
+
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Film title</th>
+            <th>Start time</th>
+            <th>Cinema</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @if (Model.Any())
+    {
+        @foreach (var screening in Model)
+        {
+            <tr>
+                <td>@screening.FilmTitle</td>
+                <td>@screening.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
+                <td>@screening.Cinema.Name</td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@screening.Id">Details</a>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@screening.Id">Delete</a>
+                    }
+                </td>
+            </tr>
+        }
+    }
+    else
+    {
+        <tr>
+            <td colspan="4" class="text-center text-muted">No screenings are currently available.</td>
+        </tr>
+    }
+    </tbody>
+</table>

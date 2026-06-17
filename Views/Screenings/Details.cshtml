@@ -1,0 +1,89 @@
+@model ScreeningDetailsViewModel
+@{
+    ViewData["Title"] = "Screening Details";
+}
+
+<h1 class="mb-3">Screening Details</h1>
+
+@if (TempData["StatusMessage"] is string statusMessage)
+{
+    <div class="alert alert-success" role="alert">@statusMessage</div>
+}
+
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Film title</dt>
+            <dd class="col-sm-9">@Model.FilmTitle</dd>
+
+            <dt class="col-sm-3">Start time</dt>
+            <dd class="col-sm-9">@Model.StartTime.ToString("yyyy-MM-dd HH:mm")</dd>
+
+            <dt class="col-sm-3">Cinema</dt>
+            <dd class="col-sm-9">@Model.CinemaName</dd>
+
+            <dt class="col-sm-3">Auditorium size</dt>
+            <dd class="col-sm-9">@Model.Rows rows x @Model.SeatsPerRow seats</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="mb-3">
+    <span class="badge bg-light text-dark border me-2">Free</span>
+    <span class="badge bg-warning text-dark me-2">Reserved by you</span>
+    <span class="badge bg-secondary">Occupied by another user</span>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-bordered align-middle">
+        <thead>
+            <tr>
+                <th style="width: 110px;">Row</th>
+                @for (var seatNumber = 1; seatNumber <= Model.SeatsPerRow; seatNumber++)
+                {
+                    <th class="text-center">S@(seatNumber)</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.SeatRows)
+        {
+            <tr>
+                <th>R@(row.RowNumber)</th>
+                @foreach (var seat in row.Seats)
+                {
+                    <td class="text-center">
+                        @if (seat.Status == SeatOccupancyStatus.Free)
+                        {
+                            <form asp-action="Reserve" asp-route-id="@Model.ScreeningId" method="post" class="d-inline">
+                                <input type="hidden" name="rowNumber" value="@seat.RowNumber" />
+                                <input type="hidden" name="seatNumber" value="@seat.SeatNumber" />
+                                <button type="submit" class="btn btn-sm btn-outline-success w-100">Free</button>
+                            </form>
+                        }
+                        else if (seat.Status == SeatOccupancyStatus.ReservedByCurrentUser)
+                        {
+                            <form asp-action="Release" asp-route-id="@Model.ScreeningId" method="post" class="d-inline">
+                                <input type="hidden" name="rowNumber" value="@seat.RowNumber" />
+                                <input type="hidden" name="seatNumber" value="@seat.SeatNumber" />
+                                <button type="submit" class="btn btn-sm btn-warning w-100">My seat</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="btn btn-sm btn-secondary w-100 disabled">Occupied</span>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<a asp-action="Index" class="btn btn-secondary">Back to screenings</a>

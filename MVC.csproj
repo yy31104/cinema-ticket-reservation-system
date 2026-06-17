@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-MVC-eb996979-013c-404e-a1f5-f5a1d826056c</UserSecretsId>
+    <ClientAppRoot>ClientApp\</ClientAppRoot>
+    <ReactBuildOutput>wwwroot\app\</ReactBuildOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="app.db" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.25" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.25" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.25" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.25" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.25" />
+  </ItemGroup>
+
+  <Target Name="BuildReactAppForPublish" BeforeTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <Content Remove="$(ReactBuildOutput)**\*" />
+      <None Remove="$(ReactBuildOutput)**\*" />
+    </ItemGroup>
+
+    <Message Importance="high" Text="Restoring React dependencies for publish..." />
+    <Exec WorkingDirectory="$(ClientAppRoot)" Command="npm ci" />
+
+    <Message Importance="high" Text="Building React frontend for publish..." />
+    <Exec WorkingDirectory="$(ClientAppRoot)" Command="npm run build" />
+
+    <ItemGroup>
+      <Content Include="$(ReactBuildOutput)**\*" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>
