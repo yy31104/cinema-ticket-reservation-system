@@ -9,13 +9,23 @@ function toDateTimeLocalValue(date) {
 
 const initialStartTime = toDateTimeLocalValue(new Date(Date.now() + 60 * 60 * 1000));
 
+function optionalText(value) {
+  const trimmedValue = value.trim();
+  return trimmedValue ? trimmedValue : null;
+}
+
 export default function AdminScreeningCreatePage() {
   const navigate = useNavigate();
   const [cinemas, setCinemas] = useState([]);
   const [form, setForm] = useState({
     filmTitle: '',
     startTime: initialStartTime,
-    cinemaId: ''
+    cinemaId: '',
+    posterUrl: '',
+    synopsis: '',
+    durationMinutes: '',
+    genre: '',
+    ageRating: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +76,12 @@ export default function AdminScreeningCreatePage() {
       const created = await createScreening({
         filmTitle: form.filmTitle,
         startTime: form.startTime,
-        cinemaId: Number(form.cinemaId)
+        cinemaId: Number(form.cinemaId),
+        posterUrl: optionalText(form.posterUrl),
+        synopsis: optionalText(form.synopsis),
+        durationMinutes: form.durationMinutes ? Number(form.durationMinutes) : null,
+        genre: optionalText(form.genre),
+        ageRating: optionalText(form.ageRating)
       });
       navigate(`/screenings/${created.id}`);
     } catch (requestError) {
@@ -141,6 +156,85 @@ export default function AdminScreeningCreatePage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="mb-3">
+            <label className="form-label" htmlFor="posterUrl">
+              Poster URL
+            </label>
+            <input
+              className="form-control"
+              id="posterUrl"
+              maxLength={2048}
+              name="posterUrl"
+              onChange={updateField}
+              placeholder="https://example.com/poster.jpg or /app/posters/example.jpg"
+              type="text"
+              value={form.posterUrl}
+            />
+          </div>
+          <div className="mb-3">
+            <label className="form-label" htmlFor="synopsis">
+              Synopsis
+            </label>
+            <textarea
+              className="form-control"
+              id="synopsis"
+              maxLength={2000}
+              name="synopsis"
+              onChange={updateField}
+              rows={4}
+              value={form.synopsis}
+            />
+          </div>
+          <div className="row">
+            <div className="col-md-4 mb-3">
+              <label className="form-label" htmlFor="durationMinutes">
+                Duration minutes
+              </label>
+              <input
+                className="form-control"
+                id="durationMinutes"
+                max={600}
+                min={1}
+                name="durationMinutes"
+                onChange={updateField}
+                type="number"
+                value={form.durationMinutes}
+              />
+            </div>
+            <div className="col-md-4 mb-3">
+              <label className="form-label" htmlFor="genre">
+                Genre
+              </label>
+              <input
+                className="form-control"
+                id="genre"
+                maxLength={60}
+                name="genre"
+                onChange={updateField}
+                value={form.genre}
+              />
+            </div>
+            <div className="col-md-4 mb-3">
+              <label className="form-label" htmlFor="ageRating">
+                Age rating
+              </label>
+              <input
+                className="form-control"
+                id="ageRating"
+                list="ageRatingOptions"
+                maxLength={16}
+                name="ageRating"
+                onChange={updateField}
+                value={form.ageRating}
+              />
+              <datalist id="ageRatingOptions">
+                <option value="G" />
+                <option value="PG" />
+                <option value="PG-13" />
+                <option value="R" />
+              </datalist>
+            </div>
           </div>
           <button className="btn btn-primary" disabled={isSubmitting || cinemas.length === 0} type="submit">
             {isSubmitting ? 'Creating...' : 'Create screening'}
