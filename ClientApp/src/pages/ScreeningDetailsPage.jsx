@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError, cancelReservation, getScreening, getSeatMap, reserveSeat } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import SeatMap from '../components/SeatMap.jsx';
 
 function formatDate(value) {
   return new Intl.DateTimeFormat(undefined, {
@@ -122,49 +123,6 @@ export default function ScreeningDetailsPage() {
     }
   }
 
-  function renderSeat(seat) {
-    const key = `${seat.rowNumber}-${seat.seatNumber}`;
-    const isPending = pendingSeatKey === key;
-    const position = `R${seat.rowNumber}, S${seat.seatNumber}`;
-
-    if (seat.status === 'free') {
-      return (
-        <button
-          className="seat-button seat-free"
-          disabled={isPending}
-          onClick={() => handleReserve(seat)}
-          type="button"
-          title={`Free seat ${position}`}
-        >
-          <span>{position}</span>
-          <small>Free</small>
-        </button>
-      );
-    }
-
-    if (seat.canCancel) {
-      return (
-        <button
-          className="seat-button seat-mine"
-          disabled={isPending}
-          onClick={() => handleCancel(seat)}
-          type="button"
-          title={`Cancel reservation for ${position}`}
-        >
-          <span>{position}</span>
-          <small>{seat.reservedByCurrentUser ? 'Mine' : 'Cancel'}</small>
-        </button>
-      );
-    }
-
-    return (
-      <button className="seat-button seat-taken" disabled type="button" title={`Reserved seat ${position}`}>
-        <span>{position}</span>
-        <small>Reserved</small>
-      </button>
-    );
-  }
-
   if (isLoading) {
     return <div className="text-muted">Loading screening...</div>;
   }
@@ -205,12 +163,12 @@ export default function ScreeningDetailsPage() {
       </dl>
 
       {status && (
-        <div className="alert alert-success" role="alert">
+        <div className="alert alert-success" role="status" aria-live="polite">
           {status}
         </div>
       )}
       {error && (
-        <div className="alert alert-danger" role="alert">
+        <div className="alert alert-danger" role="alert" aria-live="assertive">
           {error}
         </div>
       )}
@@ -222,27 +180,16 @@ export default function ScreeningDetailsPage() {
       )}
 
       {isSeatMapLoading ? (
-        <div className="text-muted">Loading seats...</div>
+        <div className="text-muted" role="status">
+          Loading seats...
+        </div>
       ) : seatMap ? (
-        <>
-          <div className="d-flex flex-wrap gap-2 mb-3">
-            <span className="seat-legend seat-free">Free</span>
-            <span className="seat-legend seat-mine">Your reservation</span>
-            <span className="seat-legend seat-taken">Reserved</span>
-          </div>
-          <div className="seat-map" style={{ '--seat-count': seatMap.cinema?.seatsPerRow || 1 }}>
-            {seatMap.seatRows.map((row) => (
-              <div className="seat-row" key={row.rowNumber}>
-                <div className="seat-row-label">Row {row.rowNumber}</div>
-                <div className="seat-row-grid">
-                  {row.seats.map((seat) => (
-                    <div key={`${seat.rowNumber}-${seat.seatNumber}`}>{renderSeat(seat)}</div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+        <SeatMap
+          onCancel={handleCancel}
+          onReserve={handleReserve}
+          pendingSeatKey={pendingSeatKey}
+          seatMap={seatMap}
+        />
       ) : null}
     </section>
   );
