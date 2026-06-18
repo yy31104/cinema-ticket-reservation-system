@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore backend
+        run: dotnet restore CinemaTicketReservation.sln
+
+      - name: Build backend
+        run: dotnet build CinemaTicketReservation.sln --no-restore --configuration Release
+
+      - name: Test backend
+        run: dotnet test CinemaTicketReservation.sln --no-build --configuration Release
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ClientApp/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: ClientApp
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: ClientApp
