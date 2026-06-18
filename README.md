@@ -31,6 +31,24 @@ The original ASP.NET MVC/Razor implementation is still present. The Task 3-4 Rea
 - React Router
 - Bootstrap
 
+## Running Checks
+From the project root:
+
+```bash
+dotnet build CinemaTicketReservation.sln
+dotnet test CinemaTicketReservation.sln
+```
+
+For the React frontend:
+
+```bash
+cd ClientApp
+npm ci
+npm run build
+```
+
+GitHub Actions runs these checks automatically on pull requests and pushes to `main`.
+
 ## Database
 - Database provider: SQLite
 - Local database file: `app.db`
