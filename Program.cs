@@ -142,3 +142,7 @@ static async Task SendReactAppAsync(HttpContext context)
     context.Response.ContentType = "text/html";
     await context.Response.SendFileAsync(indexPath);
 }
+
+public partial class Program
+{
+}
