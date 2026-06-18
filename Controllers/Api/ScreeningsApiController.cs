@@ -374,7 +374,8 @@ public class ScreeningsApiController : ControllerBase
         }
 
         if (posterUrl.StartsWith("/", StringComparison.Ordinal) &&
-            !posterUrl.StartsWith("//", StringComparison.Ordinal))
+            !posterUrl.StartsWith("//", StringComparison.Ordinal) &&
+            !posterUrl.Contains('\\'))
         {
             return true;
         }
