@@ -11,6 +11,31 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function getFilmInitials(title) {
+  return (title || 'Film')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
+}
+
+function formatDuration(minutes) {
+  if (!minutes) {
+    return '';
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (!hours) {
+    return `${remainingMinutes}m`;
+  }
+
+  return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
 export default function ScreeningDetailsPage() {
   const { id } = useParams();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -22,6 +47,7 @@ export default function ScreeningDetailsPage() {
   const [isSeatMapLoading, setIsSeatMapLoading] = useState(false);
   const [pendingSeatKey, setPendingSeatKey] = useState('');
   const [selectedSeat, setSelectedSeat] = useState(null);
+  const [isPosterUnavailable, setIsPosterUnavailable] = useState(false);
 
   const loadSeatMap = useCallback(async () => {
     if (!isAuthenticated) {
@@ -77,6 +103,10 @@ export default function ScreeningDetailsPage() {
       loadSeatMap();
     }
   }, [isAuthLoading, loadSeatMap]);
+
+  useEffect(() => {
+    setIsPosterUnavailable(false);
+  }, [screening?.posterUrl]);
 
   useEffect(() => {
     if (!selectedSeat || !seatMap) {
@@ -174,21 +204,59 @@ export default function ScreeningDetailsPage() {
     );
   }
 
+  const metadataTags = [screening.genre, screening.ageRating, formatDuration(screening.durationMinutes)].filter(Boolean);
+  const hasPoster = Boolean(screening.posterUrl) && !isPosterUnavailable;
+
   return (
     <section className="app-shell p-4">
-      <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-          <h1 className="h3 mb-1">{screening.filmTitle}</h1>
-          <div className="text-muted">{formatDate(screening.startTime)}</div>
+      <div className="screening-detail-hero mb-4">
+        <div className={`poster-frame poster-detail-frame poster-variant-0${hasPoster ? ' has-poster' : ''}`} aria-hidden="true">
+          <div className="poster-frame-inner">
+            <span className="poster-kicker">Now showing</span>
+            <span className="poster-initials">{getFilmInitials(screening.filmTitle)}</span>
+            <span className="poster-time">{formatDuration(screening.durationMinutes) || 'Cinema'}</span>
+          </div>
+          {hasPoster && (
+            <img
+              alt=""
+              className="poster-image"
+              onError={() => setIsPosterUnavailable(true)}
+              src={screening.posterUrl}
+            />
+          )}
         </div>
-        <Link className="btn btn-outline-secondary" to="/screenings">
-          Back
-        </Link>
+        <div className="screening-detail-copy">
+          <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+              <h1 className="h3 mb-1">{screening.filmTitle}</h1>
+              <div className="text-muted">{formatDate(screening.startTime)}</div>
+            </div>
+            <Link className="btn btn-outline-secondary" to="/screenings">
+              Back
+            </Link>
+          </div>
+          {metadataTags.length > 0 && (
+            <div className="screening-detail-tags">
+              {metadataTags.map((tag) => (
+                <span className="metadata-pill" key={tag}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          {screening.synopsis ? (
+            <p className="screening-synopsis">{screening.synopsis}</p>
+          ) : (
+            <p className="screening-synopsis text-muted mb-0">Choose your seats for this screening.</p>
+          )}
+        </div>
       </div>
 
       <dl className="row mb-4">
         <dt className="col-sm-3">Cinema</dt>
         <dd className="col-sm-9">{screening.cinema?.name}</dd>
+        <dt className="col-sm-3">Showtime</dt>
+        <dd className="col-sm-9">{formatDate(screening.startTime)}</dd>
         <dt className="col-sm-3">Room size</dt>
         <dd className="col-sm-9">
           {screening.cinema?.rows} rows x {screening.cinema?.seatsPerRow} seats

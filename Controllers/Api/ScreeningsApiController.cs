@@ -38,6 +38,11 @@ public class ScreeningsApiController : ControllerBase
                 Id = s.Id,
                 FilmTitle = s.FilmTitle,
                 StartTime = s.StartTime,
+                PosterUrl = s.PosterUrl,
+                Synopsis = s.Synopsis,
+                DurationMinutes = s.DurationMinutes,
+                Genre = s.Genre,
+                AgeRating = s.AgeRating,
                 Cinema = new CinemaDto
                 {
                     Id = s.Cinema.Id,
@@ -133,10 +138,21 @@ public class ScreeningsApiController : ControllerBase
             return BadRequest(new ApiErrorDto { Message = "Selected cinema does not exist." });
         }
 
+        var posterUrl = NormalizeOptionalText(request.PosterUrl);
+        if (!IsValidPosterUrl(posterUrl))
+        {
+            return BadRequest(new ApiErrorDto { Message = "Poster URL must be an absolute http/https URL or an app-relative path starting with /." });
+        }
+
         var screening = new Screening
         {
             FilmTitle = request.FilmTitle.Trim(),
             StartTime = request.StartTime,
+            PosterUrl = posterUrl,
+            Synopsis = NormalizeOptionalText(request.Synopsis),
+            DurationMinutes = request.DurationMinutes,
+            Genre = NormalizeOptionalText(request.Genre),
+            AgeRating = NormalizeOptionalText(request.AgeRating),
             CinemaId = request.CinemaId,
             Cinema = cinema
         };
@@ -257,6 +273,11 @@ public class ScreeningsApiController : ControllerBase
             Id = screening.Id,
             FilmTitle = screening.FilmTitle,
             StartTime = screening.StartTime,
+            PosterUrl = screening.PosterUrl,
+            Synopsis = screening.Synopsis,
+            DurationMinutes = screening.DurationMinutes,
+            Genre = screening.Genre,
+            AgeRating = screening.AgeRating,
             Cinema = ToCinemaDto(screening.Cinema),
             ReservationCount = screening.Reservations.Count
         };
@@ -337,6 +358,29 @@ public class ScreeningsApiController : ControllerBase
             rowNumber <= cinema.Rows &&
             seatNumber >= 1 &&
             seatNumber <= cinema.SeatsPerRow;
+    }
+
+    private static string? NormalizeOptionalText(string? value)
+    {
+        var trimmedValue = value?.Trim();
+        return string.IsNullOrWhiteSpace(trimmedValue) ? null : trimmedValue;
+    }
+
+    private static bool IsValidPosterUrl(string? posterUrl)
+    {
+        if (posterUrl is null)
+        {
+            return true;
+        }
+
+        if (posterUrl.StartsWith("/", StringComparison.Ordinal) &&
+            !posterUrl.StartsWith("//", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return Uri.TryCreate(posterUrl, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 
     private static bool IsSeatUniqueConstraintViolation(DbUpdateException ex)

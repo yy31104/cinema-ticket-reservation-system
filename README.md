@@ -39,8 +39,10 @@ The original ASP.NET MVC/Razor implementation is still present. The Task 3-4 Rea
 ### Main Entities
 - `ApplicationUser`
 - `Cinema`
-- `Screening`
+- `Screening` (film title, local start time, and optional poster URL, synopsis, duration, genre, and age rating metadata)
 - `Reservation`
+
+`Screening.StartTime` is treated as the local wall-clock time for the cinema and is stored unconverted. UTC storage and venue timezone modeling are deferred.
 
 ### Seeded Data
 - Fixed list of cinemas

@@ -15,6 +15,11 @@ public class ScreeningListItemDto
     public int Id { get; set; }
     public string FilmTitle { get; set; } = string.Empty;
     public DateTime StartTime { get; set; }
+    public string? PosterUrl { get; set; }
+    public string? Synopsis { get; set; }
+    public int? DurationMinutes { get; set; }
+    public string? Genre { get; set; }
+    public string? AgeRating { get; set; }
     public CinemaDto Cinema { get; set; } = new();
     public int ReservationCount { get; set; }
 }
@@ -24,6 +29,11 @@ public class ScreeningDetailsDto
     public int Id { get; set; }
     public string FilmTitle { get; set; } = string.Empty;
     public DateTime StartTime { get; set; }
+    public string? PosterUrl { get; set; }
+    public string? Synopsis { get; set; }
+    public int? DurationMinutes { get; set; }
+    public string? Genre { get; set; }
+    public string? AgeRating { get; set; }
     public CinemaDto Cinema { get; set; } = new();
     public int ReservationCount { get; set; }
 }
@@ -39,6 +49,21 @@ public class CreateScreeningRequestDto
 
     [Required]
     public int CinemaId { get; set; }
+
+    [StringLength(2048)]
+    public string? PosterUrl { get; set; }
+
+    [StringLength(2000)]
+    public string? Synopsis { get; set; }
+
+    [Range(1, 600)]
+    public int? DurationMinutes { get; set; }
+
+    [StringLength(60)]
+    public string? Genre { get; set; }
+
+    [StringLength(16)]
+    public string? AgeRating { get; set; }
 }
 
 public class SeatMapDto
