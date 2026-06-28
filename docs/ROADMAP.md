@@ -28,6 +28,42 @@
 Phase C (tests/CI) may begin in parallel after PR-01 if capacity allows; PR-07/08 do not
 depend on the UI PRs.
 
+## Delivery status (as of `main`)
+
+This section tracks what has actually shipped vs. what remains. It reflects the git history on
+`main` and is updated as PRs merge; it does not change the task specs below. Note the **merge
+order differed from the numbering** — the premium seat map (PR-04) shipped before film metadata
+(PR-03), and a concurrency-test follow-up (PR-07b) was added after the test foundation.
+
+| Item | Status | Shipped as (commit subject) |
+|---|---|---|
+| PR-01 — Design system foundation & app shell | ✅ Done | Add design system foundation and app shell |
+| PR-02 — Cinematic screenings listing | ✅ Done | Add cinematic screenings listing |
+| PR-04 — Premium seat map (visual) | ✅ Done | Add cinema-style seat map layout |
+| PR-04 — Premium seat map (select-then-confirm + keyboard) | ✅ Done | Add select-then-confirm seat reservation flow |
+| PR-03 — Film metadata (schema + migration) | ✅ Done | Add screening film metadata fields |
+| PR-07 — Automated testing foundation | ✅ Done | Add backend API testing foundation |
+| PR-08 — Continuous integration | ✅ Done | Add GitHub Actions CI |
+| PR-07b — RowVersion concurrency tests | ✅ Done | Add RowVersion concurrency tests |
+| PR-05 — Booking confirmation & "My Reservations" | ⬜ Not started | — |
+| PR-06 — API hardening (ProblemDetails + OpenAPI) | ⬜ Not started | — |
+| PR-09 — UX polish (toasts, modals, auth/admin) | ⬜ Not started | — |
+| PR-10 — Production readiness (provider config, security, deploy) | ⬜ Not started | — |
+
+**Done:** the design system, cinematic browsing, the full premium seat map (visual + behavior),
+optional film metadata with a migration, a 27-test backend integration suite (incl. seat-conflict
+and RowVersion 409 coverage), and green CI on every PR/push to `main`.
+
+**Future optional work** (not built — see also [INTERVIEW_NOTES.md](./INTERVIEW_NOTES.md) and the
+README "Known limitations"):
+- **PR-05** — a "My Reservations" page + booking confirmation/reference and a read endpoint.
+- **PR-06** — RFC 7807 ProblemDetails error contract and OpenAPI/Swagger (dev).
+- **PR-09** — toast notifications + modal confirmations replacing `window.confirm`; auth/admin polish.
+- **PR-10** — configurable PostgreSQL provider, security headers, rate limiting, SPA catch-all
+  fallback, and a deployment guide.
+- **Smaller follow-ups** — frontend unit tests (Vitest/RTL); a relative-date demo-screening
+  seeder; a `Film` entity if cross-screening reuse is needed; a timezone model for `StartTime`.
+
 ---
 
 ## PR-01 — Design system foundation & app shell
