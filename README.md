@@ -1,89 +1,118 @@
-# Cinema Ticket Purchasing System
+# Cinema Ticket Reservation System
 
-## Project Description
-University EGUI Task 3-4 cinema ticket purchasing system with an ASP.NET Core backend, Entity Framework Core database access, ASP.NET Core Identity authentication, and a React frontend.
+[![CI](https://github.com/yy31104/cinema-ticket-reservation-system/actions/workflows/ci.yml/badge.svg)](https://github.com/yy31104/cinema-ticket-reservation-system/actions/workflows/ci.yml)
 
-The original ASP.NET MVC/Razor implementation is still present. The Task 3-4 React application uses JSON APIs under `/api/...` and can be served by ASP.NET as a production one-server build.
+A full-stack cinema seat-reservation app: browse screenings, pick exact seats on an
+interactive, cinema-style seat map, and manage reservations — built on ASP.NET Core (.NET 8),
+EF Core, ASP.NET Core Identity, and a React (Vite) single-page front end.
 
-## Task 3-4 Feature Checklist
-- ASP.NET Core backend with JSON API endpoints
-- React frontend built with Vite
-- Entity Framework Core with SQLite
-- Bootstrap styling
-- User registration, login, logout, and profile editing
-- Admin user list/edit/delete
-- RowVersion concurrency handling for profile/admin user edit/delete
-- Admin screening create/delete
-- Deleting a screening cascades deletion of its reservations
-- Screening list and screening details
-- Seat grid with free/occupied/current-user reservation states
-- Seat reservation and cancellation by row/seat position
-- Same-seat reservation conflict handling with database unique constraint
-- Production one-server mode: ASP.NET serves API and React static files
+> **Project history.** This started as a university (EGUI) ASP.NET Core MVC/React assignment.
+> The original stable submission is preserved at the **`v0-school-submission`** git tag. Since
+> then it has been upgraded incrementally — in small, reviewed, PR-sized steps — into a
+> production-style portfolio project, without losing the ability to diff against that baseline.
 
-## Technologies Used
-- ASP.NET Core MVC / Web API (.NET 8)
-- ASP.NET Core Identity
-- Entity Framework Core
-- SQLite
-- React
-- Vite
-- React Router
-- Bootstrap
+---
 
-## Running Checks
-From the project root:
+## What the app does
 
-```bash
-dotnet build CinemaTicketReservation.sln
-dotnet test CinemaTicketReservation.sln
-```
+- **Browse screenings** (anonymous): a poster-led, responsive listing with client-side
+  filtering by date and cinema, plus loading, empty, and error states.
+- **Authenticate**: register / log in / log out via cookie-based ASP.NET Core Identity. The
+  first registered user becomes admin when no admin exists.
+- **Reserve seats**: an interactive auditorium seat map with a `SCREEN` indicator, aisles, and
+  accessible seat states. Reservation uses an explicit **select-then-confirm** flow; seat
+  status is conveyed by text + shape, not color alone.
+- **Manage account**: edit profile (name, surname, phone) with optimistic-concurrency
+  protection.
+- **Admin**: create/delete screenings (delete cascades reservations), manage users
+  (list/edit/delete, cannot delete self), and cancel any reservation.
 
-For the React frontend:
+The product deliberately stops at a confirmed **reservation** — there is no payment processing
+(see [Limitations](#known-limitations)).
 
-```bash
-cd ClientApp
-npm ci
-npm run build
-```
+## From school project to production-style
 
-GitHub Actions runs these checks automatically on pull requests and pushes to `main`.
+The upgrade focused on reliability, UX quality, and engineering rigor. Highlights delivered on
+top of the baseline:
 
-## Database
-- Database provider: SQLite
-- Local database file: `app.db`
-- EF Core migrations location: `Data/Migrations`
+| Area | Upgrade |
+|---|---|
+| **Design** | Dark, "cinema after dark" design system driven by CSS tokens; restyled app shell, navigation, and components |
+| **Browsing** | Poster-style screening cards with availability badges, filters, skeletons, and empty states |
+| **Seat map** | Auditorium layout with screen indicator + aisles; keyboard-navigable, accessible seat grid; select-then-confirm reservation flow |
+| **Content** | Optional film metadata on screenings (poster URL, synopsis, duration, genre, age rating) with server-side validation and a migration |
+| **Testing** | xUnit integration tests over the real HTTP + EF + SQLite stack (27 tests) |
+| **CI** | GitHub Actions building and testing backend + frontend on every PR and push to `main` |
 
-### Main Entities
-- `ApplicationUser`
-- `Cinema`
-- `Screening` (film title, local start time, and optional poster URL, synopsis, duration, genre, and age rating metadata)
-- `Reservation`
+Planning and design decisions are documented under [`docs/`](docs/):
+[PRODUCT_BRIEF](docs/PRODUCT_BRIEF.md) ·
+[ARCHITECTURE](docs/ARCHITECTURE.md) ·
+[DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md) ·
+[ROADMAP](docs/ROADMAP.md) ·
+[REVIEW_CHECKLIST](docs/REVIEW_CHECKLIST.md) ·
+[INTERVIEW_NOTES](docs/INTERVIEW_NOTES.md)
 
-`Screening.StartTime` is treated as the local wall-clock time for the cinema and is stored unconverted. UTC storage and venue timezone modeling are deferred.
+## Tech stack
 
-### Seeded Data
-- Fixed list of cinemas
+- **Backend**: ASP.NET Core MVC / Web API (.NET 8), ASP.NET Core Identity (cookie auth)
+- **Data**: Entity Framework Core + SQLite, migrations in `Data/Migrations`
+- **Frontend**: React 19 + Vite, React Router, Bootstrap baseline + custom design tokens
+- **Tests**: xUnit + `WebApplicationFactory` + SQLite (in-memory connection)
+- **CI**: GitHub Actions
 
-### Reservation Rule
-- Unique constraint on `(ScreeningId, RowNumber, SeatNumber)` prevents double reservation of the same seat for the same screening.
+The legacy ASP.NET MVC/Razor implementation is still present and intentionally preserved; the
+React SPA talks to the backend exclusively through `/api/...` JSON endpoints.
 
-## Known Admin/Test Accounts
-`Program.cs` promotes these existing users to the `Admin` role if they are present in the database:
+## Architecture at a glance
 
-- `admin@example.com`
-- `user@example.com`
+A single ASP.NET Core host serves three things: the JSON API (`/api/*`), the React SPA build
+(from `wwwroot/app`), and the original MVC/Razor pages. Cookie-based Identity returns **401/403**
+for unauthenticated/forbidden API requests instead of redirecting to a login page. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture, request flows, and the
+target/production architecture.
 
-No plaintext passwords are stored in the source code. If the local `app.db` already contains those accounts, use the password originally created for that database. Otherwise, the first registered user becomes admin when no admin users exist.
+### Main entities
 
-## Development Mode
-Run backend and React dev server separately.
+- `ApplicationUser` — Identity user + `Name`, `Surname`, `PhoneNumber`, `RowVersion`
+- `Cinema` — `Name`, `Rows`, `SeatsPerRow` (three seeded cinemas)
+- `Screening` — film title, local start time, and **optional** poster URL, synopsis, duration,
+  genre, and age-rating metadata
+- `Reservation` — `(ScreeningId, RowNumber, SeatNumber)` with a **unique** constraint
 
-From the project root:
+`Screening.StartTime` is treated as the cinema's **local wall-clock time** and stored
+unconverted; UTC storage and venue-timezone modeling are deferred (see ADR-0006 in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
+
+## Reliability & concurrency
+
+Two independent mechanisms keep the app correct under concurrent use, and both are covered by
+automated tests:
+
+1. **Same-seat double-booking** is prevented by a **database-level unique index** on
+   `(ScreeningId, RowNumber, SeatNumber)`. The reserve endpoint relies on the database to
+   arbitrate races: concurrent attempts to take the same seat are resolved atomically, and the
+   losing request is translated from the resulting `DbUpdateException` into **HTTP 409 Conflict**
+   rather than a 500. The conflict test exercises this through the real SQLite index (the EF
+   in-memory provider would not enforce it).
+
+2. **Stale profile / user edits** use `ApplicationUser.RowVersion` as an EF Core
+   **optimistic-concurrency token**. Clients echo the last-known `RowVersion`; a stale
+   profile/admin update or delete returns **HTTP 409 Conflict** with the current server-side
+   values in the response so the client can reconcile and retry. New `RowVersion` values are
+   generated centrally in `ApplicationDbContext` on save.
+
+## Getting started
+
+Prerequisites: **.NET 8 SDK** and **Node 20+**. The EF CLI is handy for migrations
+(`dotnet tool install --global dotnet-ef`).
+
+### Development mode (two servers)
+
+Run the backend and the Vite dev server separately. From the project root:
 
 ```bash
 dotnet restore
-dotnet ef database update
+dotnet ef database update   # creates the local app.db from migrations
 dotnet run
 ```
 
@@ -95,28 +124,14 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal, usually:
+Open the Vite URL (usually `http://localhost:5173/screenings`). The dev server proxies `/api`
+requests to the backend (default target `http://localhost:5101`; override with
+`VITE_API_TARGET`).
 
-```text
-http://localhost:5173/screenings
-```
+### Production one-server mode
 
-The Vite dev server proxies `/api` requests to the ASP.NET backend. By default the proxy target is `http://localhost:5101`. To use another backend URL in PowerShell:
-
-```bash
-$env:VITE_API_TARGET = "https://localhost:7182"
-npm run dev
-```
-
-## Production One-Server Mode
-ASP.NET can serve the backend APIs, existing MVC/Razor pages, and the React production build from one server. It serves:
-
-- MVC/Razor pages
-- `/api/...` backend endpoints
-- React static assets under `/app/...`
-- React route fallbacks such as `/screenings`, `/profile`, and `/admin/users`
-
-For a local one-server test without publishing, build React first, then run ASP.NET:
+ASP.NET Core can serve the API, the React production build (`wwwroot/app`), and the legacy
+MVC/Razor pages from one process:
 
 ```bash
 cd ClientApp
@@ -126,57 +141,103 @@ cd ..
 dotnet run
 ```
 
-Then open one of the ASP.NET URLs shown by `dotnet run`, for example:
+Then open an ASP.NET URL, e.g. `http://localhost:5101/screenings`. For a packaged build,
+`dotnet publish -c Release` runs `npm ci` + `npm run build` and includes the generated
+`wwwroot/app` output. The React build output is generated and git-ignored.
 
-```text
-http://localhost:5101/screenings
-https://localhost:7182/screenings
-```
+## Running checks
 
-For production publish, run this from the project root:
-
-```bash
-dotnet publish -c Release
-```
-
-The publish target automatically runs `npm ci` and `npm run build` inside `ClientApp`, then includes the generated `wwwroot/app` files in the publish output.
-
-Run the published app from the publish folder, for example:
+Backend build and tests (from the project root):
 
 ```bash
-cd bin/Release/net8.0/publish
-dotnet MVC.dll
+dotnet build CinemaTicketReservation.sln
+dotnet test CinemaTicketReservation.sln
 ```
 
-Useful production one-server test URLs:
+Frontend build:
 
-- React screening list: `/screenings`
-- React login: `/login`
-- React register: `/register`
-- React profile: `/profile`
-- React admin users: `/admin/users`
-- API screening list: `/api/screenings`
-- Existing MVC home page: `/Home/Index`
-- Existing MVC screening list: `/Screenings/Index`
-- Existing MVC profile edit page: `/Profile/Edit`
-- Existing Identity login page: `/Identity/Account/Login`
+```bash
+cd ClientApp
+npm ci
+npm run build
+```
 
-The React production build output in `wwwroot/app` is generated and ignored by Git. For development, keep using `dotnet run` and `npm run dev` separately.
+## Testing
 
-## Concurrency Notes
+Backend behavior is covered by **27 xUnit integration tests** under
+[`tests/MVC.Tests`](tests/MVC.Tests). They run against the real ASP.NET Core pipeline via
+`WebApplicationFactory`, backed by a **kept-open in-memory SQLite connection** (not the EF
+in-memory provider) so relational constraints behave like production. Each test gets an isolated
+database; the local `app.db` is never touched. Coverage includes:
 
-### Same Seat Conflict
-Seat reservation is protected by a database-level unique constraint on `(ScreeningId, RowNumber, SeatNumber)`. Reservation creation relies on this constraint so concurrent attempts to reserve the same seat are resolved atomically by the database. If two users try to reserve the same seat at the same time, only one reservation succeeds and the other user receives a conflict message.
+- **Reservations** — reserve a free seat, same-seat conflict → **409**, cancel-and-rebook.
+- **Concurrency** — profile and admin user edit/delete with current vs. stale `RowVersion`
+  (stale → **409** with a `current` payload).
+- **Poster URL validation** — accepts `https`/`http`/app-relative paths; rejects `javascript:`,
+  protocol-relative `//host`, and backslash `/\host` URLs.
+- **Screening metadata** — create with/without metadata; list and details include it.
+- **Authorization** — anonymous, authenticated, and admin access paths (401/403/200) and the
+  first-user-becomes-admin rule.
 
-### User Edit/Delete Concurrency
-`ApplicationUser` uses `RowVersion` as an EF Core concurrency token. Profile edit and admin user edit/delete flows send the original `RowVersion` so stale updates return `409 Conflict`. New `RowVersion` values are generated centrally in `ApplicationDbContext` before saving.
+## Continuous integration
 
-## Project Structure Overview
-- `Controllers/` - MVC and API controllers
-- `Models/` - Domain models, view models, and API DTOs
-- `Data/` - `ApplicationDbContext` and EF Core migrations
-- `Views/` - Existing Razor views
-- `Areas/Identity/` - Existing Identity Razor pages
-- `ClientApp/` - React frontend source
-- `wwwroot/app/` - Generated React production build
-- `Program.cs` - Service configuration, routing, Identity setup, React fallback, and admin role initialization
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull request and on pushes
+to `main` with read-only permissions and no secrets. It:
+
+- builds and tests the backend against `CinemaTicketReservation.sln` (.NET 8), and
+- installs and builds the frontend (`npm ci` + `npm run build`, Node 20) in `ClientApp`.
+
+NuGet and npm caches are used to speed up runs. The badge at the top of this README reflects the
+latest `main` status.
+
+## Accounts
+
+- The **first registered user becomes admin** when no admin exists.
+- `Program.cs` also promotes `admin@example.com` / `user@example.com` to the `Admin` role **if**
+  they already exist in the database. No passwords are stored in source; use whatever password
+  was created for those accounts in the local `app.db`.
+
+## Project structure
+
+```
+Controllers/            MVC + API controllers (Controllers/Api/* = JSON endpoints)
+Models/                 Domain models, view models, API DTOs (Models/Api/*)
+Data/                   ApplicationDbContext + EF Core migrations
+Services/               AdminRoleService (role bootstrap)
+Views/, Areas/Identity/ Legacy MVC/Razor + Identity pages (preserved)
+ClientApp/              React (Vite) front end
+wwwroot/app/            Generated React build (git-ignored)
+tests/MVC.Tests/        xUnit integration tests
+.github/workflows/      CI
+docs/                   Product, architecture, design, roadmap, review, interview notes
+```
+
+## Known limitations
+
+Stated honestly — these are intentional boundaries or planned future work, not hidden bugs:
+
+- **No payment processing.** The flow ends at a confirmed reservation by design; there is no
+  checkout, pricing, or payment provider.
+- **SQLite only.** Great for local/demo. PostgreSQL is documented as a *future* production
+  option in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) but is **not yet wired up**.
+- **`StartTime` has no timezone model.** It is stored as local wall-clock time; multi-timezone
+  correctness is deferred.
+- **Automated tests are backend/API only.** There are no frontend unit tests yet; the React app
+  is covered by `npm run build` in CI and manual verification.
+- **Some UX is still baseline.** Destructive actions use `window.confirm` (toast/modal polish is
+  planned), and there is no dedicated "My Reservations" page yet.
+- **No API error standard / OpenAPI yet.** Errors use a consistent `ApiErrorDto` shape but not
+  RFC 7807 ProblemDetails, and there is no Swagger UI.
+- **No production hardening yet.** No security headers, rate limiting, or deployment automation
+  beyond HTTPS redirect/HSTS.
+- **Posters are URLs only.** The app stores poster URLs and renders them with a graceful
+  placeholder fallback; it does not host, upload, or download images, and no copyrighted images
+  are committed.
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for what is done and what remains.
+
+## Baseline
+
+The original school submission is tagged **`v0-school-submission`**. Its history is never
+rewritten, so every upgrade can be compared against it (`git diff v0-school-submission..main`).
+```
