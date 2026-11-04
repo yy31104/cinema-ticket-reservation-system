@@ -488,3 +488,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Private interview preparation is kept outside the repository.
+/docs/INTERVIEW_NOTES.md
