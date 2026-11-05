@@ -6,7 +6,7 @@ namespace MVC.Tests.Infrastructure;
 
 public static class AuthTestHelpers
 {
-    private const string Password = "Passw0rd!";
+    public const string Password = "Passw0rd!";
 
     public static async Task<HttpClient> RegisterAdminAsync(CinemaApiFactory factory)
     {
@@ -27,6 +27,15 @@ public static class AuthTestHelpers
         Assert.False(user.IsAdmin);
 
         return client;
+    }
+
+    public static async Task<(HttpClient Client, AuthUserDto User)> RegisterWithEmailAsync(
+        CinemaApiFactory factory,
+        string email)
+    {
+        var client = factory.CreateApiClient();
+        var user = await RegisterAsync(client, email);
+        return (client, user);
     }
 
     private static async Task<AuthUserDto> RegisterAsync(HttpClient client, string email)

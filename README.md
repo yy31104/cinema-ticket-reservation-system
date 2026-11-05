@@ -29,7 +29,7 @@ npm --prefix ClientApp run build
 dotnet run --project MVC.csproj --launch-profile http
 ```
 
-Open [localhost:5101/screenings](http://localhost:5101/screenings). A new database has three cinemas and an empty screening list. Register at `/register`; the first account becomes admin when no admin exists. Create a screening at `/admin/screenings/create`, then return to the list and choose seats.
+Open [localhost:5101/screenings](http://localhost:5101/screenings). A new database has three cinemas and an empty screening list. Register at `/register`; the first account becomes admin when no admin exists (the check and the grant run in one transaction, so two simultaneous first registrations cannot both become admin). Create a screening at `/admin/screenings/create`, then return to the list and choose seats.
 
 In another terminal, build and run the backend checks; tests take a few seconds after restore:
 
@@ -40,6 +40,6 @@ dotnet test CinemaTicketReservation.sln
 
 ASP.NET Core serves the React build and API from one process alongside the original MVC/Razor routes. Screening times are local wall-clock values, so venues in different timezones need an explicit timezone model.
 
-The flow ends at reservation confirmation. Admin access also includes two legacy sample email addresses; review [AdminRoleService.cs](Services/AdminRoleService.cs) before sharing an instance.
+The flow ends at reservation confirmation. Further admins are explicit: list existing accounts under `Admin:Emails` in configuration and restart. No email address is promoted by default. After five failed sign-ins an account is locked for 15 minutes.
 
 See [architecture and concurrency](docs/ARCHITECTURE.md) and [seat states and keyboard controls](docs/DESIGN_SYSTEM.md) for implementation details.
