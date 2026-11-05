@@ -1,10 +1,17 @@
 import { APIRequestContext, expect, request, test } from '@playwright/test';
+import { smokeAdmin } from './smoke-admin';
 
 const password = 'Passw0rd!';
 const run = Date.now();
 const film = `Smoke Film ${run}`;
 const userEmail = `smoke-user-${run}@example.test`;
 let screeningId: number;
+
+async function signIn(api: APIRequestContext, email: string, secret: string): Promise<{ isAdmin: boolean }> {
+  const response = await api.post('/api/auth/login', { data: { email, password: secret, rememberMe: false } });
+  expect(response.status(), await response.text()).toBe(200);
+  return response.json();
+}
 
 async function register(api: APIRequestContext, email: string): Promise<{ isAdmin: boolean }> {
   const response = await api.post('/api/auth/register', {
@@ -15,10 +22,10 @@ async function register(api: APIRequestContext, email: string): Promise<{ isAdmi
 }
 
 test.beforeAll(async ({ baseURL }) => {
-  // Seed through the same API the UI uses, via the Angular dev-server proxy.
+  // The admin was pre-created by start-backend.sh; the tests only sign in.
   const admin = await request.newContext({ baseURL });
-  const adminUser = await register(admin, `smoke-admin-${run}@example.test`);
-  expect(adminUser.isAdmin, 'start-backend.sh must give a fresh database').toBe(true);
+  const adminUser = await signIn(admin, smokeAdmin.email, smokeAdmin.password);
+  expect(adminUser.isAdmin, 'start-backend.sh should have pre-created this admin').toBe(true);
 
   const created = await admin.post('/api/screenings', {
     data: {
@@ -33,7 +40,8 @@ test.beforeAll(async ({ baseURL }) => {
   await admin.dispose();
 
   const user = await request.newContext({ baseURL });
-  await register(user, userEmail);
+  const regular = await register(user, userEmail);
+  expect(regular.isAdmin, 'only the pre-created account should be admin').toBe(false);
   await user.dispose();
 });
 

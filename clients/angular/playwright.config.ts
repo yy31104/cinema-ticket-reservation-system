@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { smokeAdmin } from './e2e/smoke-admin';
 
 const apiPort = Number(process.env.API_PORT ?? 5199);
 const webPort = Number(process.env.WEB_PORT ?? 4300);
@@ -23,7 +24,11 @@ export default defineConfig({
     {
       command: 'bash e2e/start-backend.sh',
       url: `http://127.0.0.1:${apiPort}/api/screenings`,
-      env: { API_PORT: String(apiPort) },
+      env: {
+        API_PORT: String(apiPort),
+        SMOKE_ADMIN_EMAIL: smokeAdmin.email,
+        SMOKE_ADMIN_PASSWORD: smokeAdmin.password,
+      },
       timeout: 240_000,
       reuseExistingServer: false,
       stdout: 'ignore',
