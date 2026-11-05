@@ -30,7 +30,7 @@ The local connection uses `app.db`; schema changes live in [Data/Migrations](../
 
 [AuthApiController.cs](../Controllers/Api/AuthApiController.cs) handles registration, login, logout, and the current user. Identity cookies carry the session. API authorization failures return 401 or 403; MVC/Razor requests retain the normal login redirect behavior.
 
-[AdminRoleService.cs](../Services/AdminRoleService.cs) creates the `Admin` role. At startup it promotes existing `admin@example.com` and `user@example.com` accounts; if no admin exists, it selects the first user ordered by ID. Registration grants the role to the new account when no admin exists. These are the local demo's account bootstrap rules.
+[AdminRoleService.cs](../Services/AdminRoleService.cs) creates the `Admin` role. At startup it promotes the existing accounts listed under `Admin:Emails`; an email with no account is logged and skipped, so listing an address does not reserve it for whoever registers it later. Registration grants the role to the new account only when no admin exists; that read and the grant share one serializable transaction (SQLite `BEGIN IMMEDIATE`). Identity locks an account for 15 minutes after five failed sign-ins on both the API and the Razor login page.
 
 [AuthContext.jsx](../ClientApp/src/auth/AuthContext.jsx) reads `/api/auth/me`. [RequireAuth.jsx](../ClientApp/src/components/RequireAuth.jsx) gates client pages; controller authorization attributes enforce access on the server.
 

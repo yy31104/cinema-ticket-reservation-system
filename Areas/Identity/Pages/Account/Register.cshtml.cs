@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using MVC.Data;
 using MVC.Models;
 using MVC.Services;
 
@@ -28,6 +29,7 @@ namespace MVC.Areas.Identity.Pages.Account
     [EnableRateLimiting(RateLimitPolicies.Register)]
     public class RegisterModel : PageModel
     {
+        private readonly ApplicationDbContext _context;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
@@ -37,6 +39,7 @@ namespace MVC.Areas.Identity.Pages.Account
         private readonly IEmailSender _emailSender;
 
         public RegisterModel(
+            ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
             IUserStore<ApplicationUser> userStore,
@@ -44,6 +47,7 @@ namespace MVC.Areas.Identity.Pages.Account
             ILogger<RegisterModel> logger,
             IEmailSender emailSender)
         {
+            _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
             _userStore = userStore;
@@ -142,7 +146,7 @@ namespace MVC.Areas.Identity.Pages.Account
                     await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
                         $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
 
-                    await AdminRoleService.EnsureFirstUserIsAdminAsync(_userManager, _roleManager, user);
+                    await AdminRoleService.EnsureFirstUserIsAdminAsync(_context, _userManager, _roleManager, user);
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {

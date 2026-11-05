@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using MVC.Data;
 using MVC.Models;
 using MVC.Models.Api;
 using MVC.Services;
@@ -12,15 +13,18 @@ namespace MVC.Controllers.Api;
 [Route("api/auth")]
 public class AuthApiController : ControllerBase
 {
+    private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
 
     public AuthApiController(
+        ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         SignInManager<ApplicationUser> signInManager)
     {
+        _context = context;
         _userManager = userManager;
         _roleManager = roleManager;
         _signInManager = signInManager;
@@ -50,7 +54,7 @@ public class AuthApiController : ControllerBase
             });
         }
 
-        await AdminRoleService.EnsureFirstUserIsAdminAsync(_userManager, _roleManager, user);
+        await AdminRoleService.EnsureFirstUserIsAdminAsync(_context, _userManager, _roleManager, user);
         await _signInManager.SignInAsync(user, isPersistent: false);
         return CreatedAtAction(nameof(Me), await ToAuthUserDtoAsync(user));
     }
@@ -64,7 +68,7 @@ public class AuthApiController : ControllerBase
             request.Email,
             request.Password,
             request.RememberMe,
-            lockoutOnFailure: false);
+            lockoutOnFailure: true);
 
         if (result.Succeeded)
         {
@@ -78,7 +82,15 @@ public class AuthApiController : ControllerBase
             return Ok(await ToAuthUserDtoAsync(user));
         }
 
-        if (result.IsLockedOut || result.RequiresTwoFactor || result.IsNotAllowed)
+        if (result.IsLockedOut)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ApiErrorDto
+            {
+                Message = "This account is temporarily locked after repeated failed sign-ins. Try again later."
+            });
+        }
+
+        if (result.RequiresTwoFactor || result.IsNotAllowed)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new ApiErrorDto { Message = "Login is not allowed for this account." });
         }
