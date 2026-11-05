@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Starts the real ASP.NET Core backend on a throwaway SQLite database for the
 # Playwright smoke test, with the admin account created before the serving
-# instance starts (the explicit bootstrap from #13):
+# instance starts:
 #
 #   1. migrate a fresh database;
-#   2. boot a short-lived seed instance and register SMOKE_ADMIN_EMAIL;
+#   2. boot a short-lived seed instance, register a placeholder account first
+#      (the first registration becomes admin), then register SMOKE_ADMIN_EMAIL,
+#      which is therefore not an admin yet;
 #   3. start the instance the tests use with Admin:Emails listing that
-#      account, so the startup bootstrap promotes it.
+#      account, so only the startup bootstrap can promote it.
 #
 # The tests never register the admin themselves, so nothing depends on
 # which account a test happens to register first.
@@ -39,9 +41,20 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
-curl -fsS -o /dev/null -X POST "http://127.0.0.1:$seed_port/api/auth/register" \
-  -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$admin_email\",\"password\":\"$admin_password\",\"confirmPassword\":\"$admin_password\",\"name\":\"Smoke\",\"surname\":\"Admin\"}"
+register() {
+  curl -fsS -X POST "http://127.0.0.1:$seed_port/api/auth/register" \
+    -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$1\",\"password\":\"$admin_password\",\"confirmPassword\":\"$admin_password\",\"name\":\"Smoke\",\"surname\":\"$2\"}"
+}
+
+register "placeholder-$admin_email" Placeholder > /dev/null
+admin_json="$(register "$admin_email" Admin)"
+case "$admin_json" in
+  *'"isAdmin":true'*)
+    echo "start-backend.sh: $admin_email became admin at registration; only Admin:Emails should promote it" >&2
+    exit 1
+    ;;
+esac
 
 kill "$seed_pid"
 wait "$seed_pid" 2> /dev/null || true

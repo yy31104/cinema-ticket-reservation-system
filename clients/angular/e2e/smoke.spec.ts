@@ -25,7 +25,7 @@ test.beforeAll(async ({ baseURL }) => {
   // The admin was pre-created by start-backend.sh; the tests only sign in.
   const admin = await request.newContext({ baseURL });
   const adminUser = await signIn(admin, smokeAdmin.email, smokeAdmin.password);
-  expect(adminUser.isAdmin, 'start-backend.sh should have pre-created this admin').toBe(true);
+  expect(adminUser.isAdmin, 'Admin:Emails should have promoted this account').toBe(true);
 
   const created = await admin.post('/api/screenings', {
     data: {
@@ -41,7 +41,7 @@ test.beforeAll(async ({ baseURL }) => {
 
   const user = await request.newContext({ baseURL });
   const regular = await register(user, userEmail);
-  expect(regular.isAdmin, 'only the pre-created account should be admin').toBe(false);
+  expect(regular.isAdmin, 'a later registration should not be admin').toBe(false);
   await user.dispose();
 });
 
