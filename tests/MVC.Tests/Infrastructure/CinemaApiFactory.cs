@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using MVC.Data;
+using MVC.Services;
 
 namespace MVC.Tests.Infrastructure;
 
@@ -18,6 +19,11 @@ public sealed class CinemaApiFactory : WebApplicationFactory<Program>
     /// "screening already started" rule does not depend on the real date.
     /// </summary>
     public TestTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 7, 1, 12, 0, 0, TimeSpan.Zero));
+
+    /// <summary>
+    /// Optional override for rate limits; set it before the first client is created.
+    /// </summary>
+    public Action<RateLimitingOptions>? RateLimits { get; set; }
 
     public CinemaApiFactory()
     {
@@ -53,6 +59,8 @@ public sealed class CinemaApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+
+            services.PostConfigure<RateLimitingOptions>(options => RateLimits?.Invoke(options));
 
             using var serviceProvider = services.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();

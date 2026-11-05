@@ -13,11 +13,15 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using MVC.Models;
+using MVC.Services;
 
 namespace MVC.Areas.Identity.Pages.Account
 {
+    // GET renders the form unlimited; the policy only counts POSTs.
+    [EnableRateLimiting(RateLimitPolicies.Login)]
     public class LoginModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;

@@ -44,6 +44,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.Configure<ReservationOptions>(builder.Configuration.GetSection(ReservationOptions.SectionName));
 builder.Services.AddScoped<ReservationService>();
+builder.Services.AddCinemaRateLimiting(builder.Configuration);
 
 var app = builder.Build();
 
@@ -75,6 +76,9 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After authentication so the reservation policy can partition by user id.
+app.UseRateLimiter();
 
 app.MapControllerRoute(
     name: "default",
