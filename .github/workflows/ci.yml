@@ -54,3 +54,47 @@ jobs:
       - name: Build frontend
         run: npm run build
         working-directory: ClientApp
+
+  angular:
+    name: Angular client build and smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: clients/angular/.nvmrc
+          cache: npm
+          cache-dependency-path: clients/angular/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: clients/angular
+
+      - name: Build
+        run: npx ng build
+        working-directory: clients/angular
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: clients/angular
+
+      - name: Smoke test (real backend + ng serve)
+        run: npm test
+        working-directory: clients/angular
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: clients/angular/test-results
+          retention-days: 7

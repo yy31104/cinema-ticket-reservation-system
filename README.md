@@ -40,7 +40,7 @@ dotnet build CinemaTicketReservation.sln
 dotnet test CinemaTicketReservation.sln
 ```
 
-ASP.NET Core serves the React build and API from one process alongside the original MVC/Razor routes. Screening times are local wall-clock values, so venues in different timezones need an explicit timezone model.
+ASP.NET Core serves the React build and API from one process alongside the original MVC/Razor routes. A second client in Angular ([`clients/angular/`](clients/angular/README.md)) has a screenings list and a seat map that call the same API, plus a Playwright smoke test that runs against the real backend. Screening times are local wall-clock values, so venues in different timezones need an explicit timezone model.
 
 The flow ends at reservation confirmation. Admin access also includes two legacy sample email addresses; review [AdminRoleService.cs](Services/AdminRoleService.cs) before sharing an instance.
 
