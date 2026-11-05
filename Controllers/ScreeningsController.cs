@@ -1,11 +1,11 @@
 using System.Security.Claims;
-using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MVC.Data;
 using MVC.Models;
+using MVC.Services;
 
 namespace MVC.Controllers;
 
@@ -13,10 +13,12 @@ namespace MVC.Controllers;
 public class ScreeningsController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly ReservationService _reservations;
 
-    public ScreeningsController(ApplicationDbContext context)
+    public ScreeningsController(ApplicationDbContext context, ReservationService reservations)
     {
         _context = context;
+        _reservations = reservations;
     }
 
     [AllowAnonymous]
@@ -68,43 +70,32 @@ public class ScreeningsController : Controller
             return Challenge();
         }
 
-        var screening = await _context.Screenings
-            .Include(s => s.Cinema)
-            .FirstOrDefaultAsync(s => s.Id == id);
-
-        if (screening is null)
+        var result = await _reservations.ReserveAsync(id, userId, rowNumber, seatNumber);
+        switch (result.Outcome)
         {
-            return NotFound();
-        }
-
-        if (rowNumber < 1 || rowNumber > screening.Cinema.Rows || seatNumber < 1 || seatNumber > screening.Cinema.SeatsPerRow)
-        {
-            TempData["ErrorMessage"] = "Selected seat is outside auditorium bounds.";
-            return RedirectToAction(nameof(Details), new { id });
-        }
-
-        var reservation = new Reservation
-        {
-            ScreeningId = id,
-            UserId = userId,
-            RowNumber = rowNumber,
-            SeatNumber = seatNumber,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        try
-        {
-            _context.Reservations.Add(reservation);
-            await _context.SaveChangesAsync();
-            TempData["StatusMessage"] = $"Seat R{rowNumber} S{seatNumber} reserved.";
-        }
-        catch (DbUpdateException ex) when (IsSeatUniqueConstraintViolation(ex))
-        {
-            TempData["ErrorMessage"] = "This seat was just taken by another user. Please choose another seat.";
-        }
-        catch (DbUpdateException)
-        {
-            TempData["ErrorMessage"] = "Unable to reserve this seat right now. Please try again.";
+            case ReserveOutcome.ScreeningNotFound:
+                return NotFound();
+            case ReserveOutcome.Created:
+                TempData["StatusMessage"] = $"Seat R{rowNumber} S{seatNumber} reserved.";
+                break;
+            case ReserveOutcome.AlreadyReservedByYou:
+                TempData["StatusMessage"] = $"Seat R{rowNumber} S{seatNumber} is already reserved by you.";
+                break;
+            case ReserveOutcome.SeatOutOfBounds:
+                TempData["ErrorMessage"] = "Selected seat is outside auditorium bounds.";
+                break;
+            case ReserveOutcome.ScreeningStarted:
+                TempData["ErrorMessage"] = "This screening has already started; seats can no longer be reserved.";
+                break;
+            case ReserveOutcome.PerUserLimitReached:
+                TempData["ErrorMessage"] = $"You can reserve at most {result.Limit} seats for one screening.";
+                break;
+            case ReserveOutcome.TakenByAnotherUser:
+                TempData["ErrorMessage"] = "This seat was just taken by another user. Please choose another seat.";
+                break;
+            default:
+                TempData["ErrorMessage"] = "Unable to reserve this seat right now. Please try again.";
+                break;
         }
 
         return RedirectToAction(nameof(Details), new { id });
@@ -259,22 +250,5 @@ public class ScreeningsController : Controller
             SeatsPerRow = screening.Cinema.SeatsPerRow,
             SeatRows = seatRows
         };
-    }
-
-    private static bool IsSeatUniqueConstraintViolation(DbUpdateException ex)
-    {
-        if (ex.InnerException is not SqliteException sqliteEx)
-        {
-            return false;
-        }
-
-        const int sqliteConstraintErrorCode = 19;
-        if (sqliteEx.SqliteErrorCode != sqliteConstraintErrorCode)
-        {
-            return false;
-        }
-
-        return sqliteEx.Message.Contains("IX_Reservations_ScreeningId_RowNumber_SeatNumber", StringComparison.OrdinalIgnoreCase)
-            || sqliteEx.Message.Contains("UNIQUE constraint failed: Reservations.ScreeningId, Reservations.RowNumber, Reservations.SeatNumber", StringComparison.OrdinalIgnoreCase);
     }
 }
