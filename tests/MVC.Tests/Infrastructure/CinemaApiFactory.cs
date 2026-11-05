@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using MVC.Data;
+using MVC.Services;
 
 namespace MVC.Tests.Infrastructure;
 
@@ -18,6 +20,14 @@ public sealed class CinemaApiFactory : WebApplicationFactory<Program>
     /// "screening already started" rule does not depend on the real date.
     /// </summary>
     public TestTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 7, 1, 12, 0, 0, TimeSpan.Zero));
+
+    /// <summary>
+    /// Optional override for rate limits; set it before the first client is created.
+    /// </summary>
+    public Action<RateLimitingOptions>? RateLimits { get; set; }
+
+    /// <summary>Extra configuration values; set them before the first client is created.</summary>
+    public Dictionary<string, string?> Settings { get; } = new();
 
     public CinemaApiFactory()
     {
@@ -38,6 +48,8 @@ public sealed class CinemaApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
 
+        builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(Settings));
+
         builder.ConfigureLogging(logging =>
         {
             logging.ClearProviders();
@@ -53,6 +65,9 @@ public sealed class CinemaApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+
+            services.PostConfigure<RateLimitingOptions>(options => RateLimits?.Invoke(options));
+            services.AddTransient<IStartupFilter, SocketAddressStartupFilter>();
 
             using var serviceProvider = services.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();

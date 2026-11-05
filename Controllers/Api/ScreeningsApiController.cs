@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MVC.Data;
 using MVC.Models;
@@ -189,6 +190,7 @@ public class ScreeningsApiController : ControllerBase
 
     [HttpPost("{id:int}/reservations")]
     [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.Reservations)]
     public async Task<IActionResult> ReserveSeat(int id, ReserveSeatRequestDto request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
