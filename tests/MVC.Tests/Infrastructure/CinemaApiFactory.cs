@@ -13,6 +13,12 @@ public sealed class CinemaApiFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
+    /// <summary>
+    /// Fixed before the screening dates the tests create (July 2026), so the
+    /// "screening already started" rule does not depend on the real date.
+    /// </summary>
+    public TestTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 7, 1, 12, 0, 0, TimeSpan.Zero));
+
     public CinemaApiFactory()
     {
         _connection.Open();
@@ -44,6 +50,9 @@ public sealed class CinemaApiFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlite(_connection));
+
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(Clock);
 
             using var serviceProvider = services.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();

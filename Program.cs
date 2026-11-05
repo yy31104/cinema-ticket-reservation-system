@@ -41,6 +41,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.Configure<ReservationOptions>(builder.Configuration.GetSection(ReservationOptions.SectionName));
+builder.Services.AddScoped<ReservationService>();
 
 var app = builder.Build();
 

@@ -12,6 +12,8 @@ Local demo with a fictional screening and sample accounts.
 
 Seat availability is a snapshot. The unique `(ScreeningId, RowNumber, SeatNumber)` index settles competing writes; the [reservation API](Controllers/Api/ScreeningsApiController.cs) returns 409 and the [seat map](ClientApp/src/components/SeatMap.jsx) refreshes after a conflict.
 
+Both the API and the Razor pages reserve through [one service](Services/ReservationService.cs). It refuses seats for a screening that has already started, limits each account to `Reservations:MaxSeatsPerUserPerScreening` seats per screening (default 6), and returns the existing reservation when a user retries a seat they already hold. The limit check and the insert run in one SQLite `BEGIN IMMEDIATE` transaction, so two concurrent requests from one user cannot both pass the check.
+
 User edits carry an application-managed `RowVersion`. The [database context](Data/ApplicationDbContext.cs) replaces it on inserts and updates, and stale profile or admin requests receive the current values with a 409 response. [Integration tests](tests/MVC.Tests/Api/ReservationTests.cs) use SQLite to exercise its constraints.
 
 ## Run locally

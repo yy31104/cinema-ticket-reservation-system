@@ -156,7 +156,9 @@ export default function ScreeningDetailsPage() {
       await loadSeatMap();
     } catch (requestError) {
       if (requestError instanceof ApiError && requestError.status === 409) {
-        setError('This seat was already reserved by another user.');
+        // 409 covers a taken seat, a started screening and the per-user limit;
+        // the server message says which one.
+        setError(requestError.message || 'This seat was already reserved by another user.');
         setSelectedSeat(null);
         await loadSeatMap();
       } else {
