@@ -18,7 +18,7 @@ User edits carry an application-managed `RowVersion`. The [database context](Dat
 
 ## Run locally
 
-Requires the .NET 8 SDK and Node.js 22.12+:
+Requires the .NET 8 SDK and Node.js 22.12+. [`ClientApp/.nvmrc`](ClientApp/.nvmrc) pins 22.12.0, and CI uses that file. Vite 7 also accepts 20.19+, but `npm ci` refuses anything older (`engine-strict`):
 
 ```bash
 git clone https://github.com/yy31104/cinema-ticket-reservation-system.git
