@@ -18,6 +18,11 @@
     <Content Remove="tests/**" />
     <EmbeddedResource Remove="tests/**" />
     <None Remove="tests/**" />
+    <!-- Separate front ends (e.g. clients/angular) are not part of the web project's output. -->
+    <Compile Remove="clients/**" />
+    <Content Remove="clients/**" />
+    <EmbeddedResource Remove="clients/**" />
+    <None Remove="clients/**" />
   </ItemGroup>
 
   <ItemGroup>
