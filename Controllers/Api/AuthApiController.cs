@@ -28,6 +28,7 @@ public class AuthApiController : ControllerBase
 
     [HttpPost("register")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Register)]
     public async Task<IActionResult> Register(RegisterRequestDto request)
     {
         var user = new ApplicationUser

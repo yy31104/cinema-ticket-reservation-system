@@ -44,9 +44,14 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.Configure<ReservationOptions>(builder.Configuration.GetSection(ReservationOptions.SectionName));
 builder.Services.AddScoped<ReservationService>();
+builder.Services.AddCinemaForwardedHeaders();
 builder.Services.AddCinemaRateLimiting(builder.Configuration);
 
 var app = builder.Build();
+
+// First, so HSTS/HTTPS redirection and the rate limiter see the real client
+// address and scheme when a trusted reverse proxy forwards the request.
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {

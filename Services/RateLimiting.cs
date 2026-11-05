@@ -20,6 +20,9 @@ public sealed class RateLimitingOptions
     /// <summary>Login attempts (POST only) per client IP.</summary>
     public FixedWindowLimit Login { get; set; } = new() { PermitLimit = 10, WindowSeconds = 60 };
 
+    /// <summary>Account registrations (POST only) per client IP. Separate from the login budget.</summary>
+    public FixedWindowLimit Register { get; set; } = new() { PermitLimit = 5, WindowSeconds = 600 };
+
     /// <summary>Reservation requests per signed-in user, shared by the MVC form and the API.</summary>
     public FixedWindowLimit Reservations { get; set; } = new() { PermitLimit = 30, WindowSeconds = 60 };
 }
@@ -31,6 +34,7 @@ public sealed class RateLimitingOptions
 public static class RateLimitPolicies
 {
     public const string Login = "login";
+    public const string Register = "register";
     public const string Reservations = "reservations";
 
     public static IServiceCollection AddCinemaRateLimiting(this IServiceCollection services, IConfiguration configuration)
@@ -51,6 +55,16 @@ public static class RateLimitPolicies
                 }
 
                 return FixedWindow($"login:ip:{ClientIp(context)}", LimitsFor(context).Login);
+            });
+
+            options.AddPolicy(Register, context =>
+            {
+                if (!HttpMethods.IsPost(context.Request.Method))
+                {
+                    return RateLimitPartition.GetNoLimiter("register:read");
+                }
+
+                return FixedWindow($"register:ip:{ClientIp(context)}", LimitsFor(context).Register);
             });
 
             options.AddPolicy(Reservations, context =>
@@ -87,8 +101,9 @@ public static class RateLimitPolicies
     }
 
     /// <summary>
-    /// Uses the socket address. Behind a reverse proxy, configure
-    /// ForwardedHeadersMiddleware first or every client shares the proxy's IP.
+    /// The client address after ForwardedHeadersMiddleware has run (see
+    /// ForwardedHeadersSetup): the X-Forwarded-For value when the request came
+    /// through a trusted proxy, otherwise the socket address.
     /// </summary>
     private static string ClientIp(HttpContext context)
     {

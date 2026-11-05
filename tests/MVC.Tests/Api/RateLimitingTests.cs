@@ -69,6 +69,50 @@ public sealed class RateLimitingTests : ApiTestBase
     }
 
     [Fact]
+    public async Task ApiRegister_BeyondLimit_Returns429_AndLeavesLoginBudgetAlone()
+    {
+        Factory.RateLimits = o =>
+        {
+            o.Register = new FixedWindowLimit { PermitLimit = 2, WindowSeconds = 600 };
+            o.Login = new FixedWindowLimit { PermitLimit = 1, WindowSeconds = 60 };
+        };
+
+        var email = await RegisterAsync(CreateClient());
+        await RegisterAsync(CreateClient());
+
+        var limited = await CreateClient().PostAsJsonAsync("/api/auth/register", NewAccount($"ratelimit-{Guid.NewGuid():N}@example.test"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        Assert.True(limited.Headers.Contains("Retry-After"));
+        var error = await limited.Content.ReadFromJsonAsync<ApiErrorDto>();
+        Assert.Contains("Too many requests", error!.Message);
+
+        // Registrations have their own bucket: the single login permit is still there.
+        var login = await CreateClient().PostAsJsonAsync("/api/auth/login", Login(email, Password));
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
+
+    [Fact]
+    public async Task IdentityRegisterPage_CountsPostsOnly_AndSharesBudgetWithApiRegister()
+    {
+        Factory.RateLimits = o => o.Register = new FixedWindowLimit { PermitLimit = 2, WindowSeconds = 600 };
+
+        for (var i = 0; i < 5; i++)
+        {
+            var page = await CreateClient().GetAsync("/Identity/Account/Register");
+            Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        }
+
+        var formPost = await PostRegisterFormAsync(CreateClient());
+        Assert.Equal(HttpStatusCode.Redirect, formPost.StatusCode);
+
+        await RegisterAsync(CreateClient());
+
+        var limitedForm = await PostRegisterFormAsync(CreateClient());
+        Assert.Equal(HttpStatusCode.TooManyRequests, limitedForm.StatusCode);
+        Assert.StartsWith("text/plain", limitedForm.Content.Headers.ContentType!.ToString());
+    }
+
+    [Fact]
     public async Task Reservations_LimitIsPerUser_AndSharedByMvcAndApi()
     {
         Factory.RateLimits = o => o.Reservations = new FixedWindowLimit { PermitLimit = 3, WindowSeconds = 60 };
@@ -144,16 +188,33 @@ public sealed class RateLimitingTests : ApiTestBase
     private static async Task<string> RegisterAsync(HttpClient client)
     {
         var email = $"ratelimit-{Guid.NewGuid():N}@example.test";
-        var response = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequestDto
+        var response = await client.PostAsJsonAsync("/api/auth/register", NewAccount(email));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return email;
+    }
+
+    private static RegisterRequestDto NewAccount(string email)
+    {
+        return new RegisterRequestDto
         {
             Email = email,
             Password = Password,
             ConfirmPassword = Password,
             Name = "Rate",
             Surname = "Limit"
-        });
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        return email;
+        };
+    }
+
+    private static async Task<HttpResponseMessage> PostRegisterFormAsync(HttpClient client)
+    {
+        var token = await HtmlForms.GetAntiforgeryTokenAsync(client, "/Identity/Account/Register");
+        return await client.PostAsync("/Identity/Account/Register", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Input.Email"] = $"form-{Guid.NewGuid():N}@example.test",
+            ["Input.Password"] = Password,
+            ["Input.ConfirmPassword"] = Password,
+            ["__RequestVerificationToken"] = token
+        }));
     }
 
     private static LoginRequestDto Login(string email, string password)
