@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MVC.Data;
 using MVC.Models;
 using MVC.Models.Api;
@@ -31,6 +32,7 @@ public class AuthApiController : ControllerBase
 
     [HttpPost("register")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Register)]
     public async Task<IActionResult> Register(RegisterRequestDto request)
     {
         var user = new ApplicationUser
@@ -59,6 +61,7 @@ public class AuthApiController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Login)]
     public async Task<IActionResult> Login(LoginRequestDto request)
     {
         var result = await _signInManager.PasswordSignInAsync(

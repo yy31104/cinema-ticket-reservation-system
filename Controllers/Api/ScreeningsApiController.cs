@@ -1,11 +1,12 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MVC.Data;
 using MVC.Models;
 using MVC.Models.Api;
+using MVC.Services;
 
 namespace MVC.Controllers.Api;
 
@@ -18,10 +19,12 @@ public class ScreeningsApiController : ControllerBase
     private const string ReservedByOtherUserStatus = "reservedByOtherUser";
 
     private readonly ApplicationDbContext _context;
+    private readonly ReservationService _reservations;
 
-    public ScreeningsApiController(ApplicationDbContext context)
+    public ScreeningsApiController(ApplicationDbContext context, ReservationService reservations)
     {
         _context = context;
+        _reservations = reservations;
     }
 
     [HttpGet]
@@ -187,6 +190,7 @@ public class ScreeningsApiController : ControllerBase
 
     [HttpPost("{id:int}/reservations")]
     [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.Reservations)]
     public async Task<IActionResult> ReserveSeat(int id, ReserveSeatRequestDto request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -195,45 +199,20 @@ public class ScreeningsApiController : ControllerBase
             return Unauthorized(new ApiErrorDto { Message = "Authentication is required." });
         }
 
-        var screening = await _context.Screenings
-            .AsNoTracking()
-            .Include(s => s.Cinema)
-            .SingleOrDefaultAsync(s => s.Id == id);
-
-        if (screening is null)
+        var result = await _reservations.ReserveAsync(id, userId, request.RowNumber, request.SeatNumber);
+        return result.Outcome switch
         {
-            return NotFound(new ApiErrorDto { Message = "Screening not found." });
-        }
-
-        if (!IsSeatInsideCinema(screening.Cinema, request.RowNumber, request.SeatNumber))
-        {
-            return BadRequest(new ApiErrorDto { Message = "Selected seat is outside auditorium bounds." });
-        }
-
-        var reservation = new Reservation
-        {
-            ScreeningId = id,
-            UserId = userId,
-            RowNumber = request.RowNumber,
-            SeatNumber = request.SeatNumber,
-            CreatedAt = DateTime.UtcNow
+            ReserveOutcome.Created => StatusCode(StatusCodes.Status201Created, ToReservationDto(result.Reservation!, userId)),
+            // A retry of a request that already succeeded returns the original
+            // reservation instead of reporting the user's own seat as taken.
+            ReserveOutcome.AlreadyReservedByYou => Ok(ToReservationDto(result.Reservation!, userId)),
+            ReserveOutcome.ScreeningNotFound => NotFound(new ApiErrorDto { Message = "Screening not found." }),
+            ReserveOutcome.SeatOutOfBounds => BadRequest(new ApiErrorDto { Message = "Selected seat is outside auditorium bounds." }),
+            ReserveOutcome.ScreeningStarted => Conflict(new ApiErrorDto { Message = "This screening has already started; seats can no longer be reserved." }),
+            ReserveOutcome.PerUserLimitReached => Conflict(new ApiErrorDto { Message = $"You can reserve at most {result.Limit} seats for one screening." }),
+            ReserveOutcome.TakenByAnotherUser => Conflict(new ApiErrorDto { Message = "This seat was already reserved by another user." }),
+            _ => Conflict(new ApiErrorDto { Message = "Unable to reserve this seat right now." })
         };
-
-        _context.Reservations.Add(reservation);
-
-        try
-        {
-            await _context.SaveChangesAsync();
-            return StatusCode(StatusCodes.Status201Created, ToReservationDto(reservation, userId));
-        }
-        catch (DbUpdateException ex) when (IsSeatUniqueConstraintViolation(ex))
-        {
-            return Conflict(new ApiErrorDto { Message = "This seat was already reserved by another user." });
-        }
-        catch (DbUpdateException)
-        {
-            return Conflict(new ApiErrorDto { Message = "Unable to reserve this seat right now." });
-        }
     }
 
     [HttpDelete("{id:int}/reservations/{reservationId:int}")]
@@ -352,14 +331,6 @@ public class ScreeningsApiController : ControllerBase
         };
     }
 
-    private static bool IsSeatInsideCinema(Cinema cinema, int rowNumber, int seatNumber)
-    {
-        return rowNumber >= 1 &&
-            rowNumber <= cinema.Rows &&
-            seatNumber >= 1 &&
-            seatNumber <= cinema.SeatsPerRow;
-    }
-
     private static string? NormalizeOptionalText(string? value)
     {
         var trimmedValue = value?.Trim();
@@ -382,22 +353,5 @@ public class ScreeningsApiController : ControllerBase
 
         return Uri.TryCreate(posterUrl, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
-    }
-
-    private static bool IsSeatUniqueConstraintViolation(DbUpdateException ex)
-    {
-        if (ex.InnerException is not SqliteException sqliteEx)
-        {
-            return false;
-        }
-
-        const int sqliteConstraintErrorCode = 19;
-        if (sqliteEx.SqliteErrorCode != sqliteConstraintErrorCode)
-        {
-            return false;
-        }
-
-        return sqliteEx.Message.Contains("IX_Reservations_ScreeningId_RowNumber_SeatNumber", StringComparison.OrdinalIgnoreCase)
-            || sqliteEx.Message.Contains("UNIQUE constraint failed: Reservations.ScreeningId, Reservations.RowNumber, Reservations.SeatNumber", StringComparison.OrdinalIgnoreCase);
     }
 }

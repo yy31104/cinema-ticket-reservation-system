@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using MVC.Data;
@@ -24,6 +25,8 @@ using MVC.Services;
 
 namespace MVC.Areas.Identity.Pages.Account
 {
+    // GET renders the form unlimited; the policy only counts POSTs.
+    [EnableRateLimiting(RateLimitPolicies.Register)]
     public class RegisterModel : PageModel
     {
         private readonly ApplicationDbContext _context;

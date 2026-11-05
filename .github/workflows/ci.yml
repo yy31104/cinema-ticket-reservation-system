@@ -43,7 +43,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Same pin as README and ClientApp/.nvmrc (Vite 7 needs ^20.19.0 || >=22.12.0).
+          node-version-file: ClientApp/.nvmrc
           cache: npm
           cache-dependency-path: ClientApp/package-lock.json
 
